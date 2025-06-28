@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Interview Voice Coach</title>
+  <style>
+    body {
+      background: #121212;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding-top: 50px;
+    }
+
+    select, .mic-button, .feedback {
+      margin-top: 20px;
+    }
+
+    select {
+      font-size: 16px;
+      padding: 8px;
+    }
+
+    .mic-button {
+      background-color: red;
+      border: none;
+      border-radius: 50%;
+      width: 100px;
+      height: 100px;
+      cursor: pointer;
+    }
+
+    .bars-container {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .bar {
+      width: 5px;
+      height: 10px;
+      background: white;
+      margin: 0 2px;
+      transition: height 0.1s;
+    }
+
+    .feedback {
+      margin-top: 40px;
+      font-size: 16px;
+      color: #ccc;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      padding: 10px;
+      background-color: #1f1f1f;
+      border-radius: 10px;
+      border: 1px solid #444;
+      display: none;
+    }
+
+    .feedback h3 {
+      color: #00ccff;
+      margin-bottom: 5px;
+    }
+
+    .rating span {
+      font-size: 30px;
+      cursor: pointer;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #00ccff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      color: black;
+    }
+
+    button:hover {
+      background-color: #0099cc;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Interview Voice Coach</h1>
+
+  <label for="role">Select Job Role:</label>
+  <select id="role">
+    <option value="Software Engineer">Software Engineer</option>
+    <option value="Data Scientist">Data Scientist</option>
+    <option value="Product Manager">Product Manager</option>
+    <option value="Marketing Analyst">Marketing Analyst</option>
+    <option value="Custom">Custom Role...</option>
+  </select>
+  <input type="text" id="customRole" placeholder="Enter role..." style="display:none; margin-top: 10px; padding: 5px;" />
+
+  <div>
+    <button class="mic-button" onclick="toggleRecording()"></button>
+  </div>
+
+  <div class="bars-container">
+    <div class="bar" id="bar0"></div>
+    <div class="bar" id="bar1"></div>
+    <div class="bar" id="bar2"></div>
+    <div class="bar" id="bar3"></div>
+    <div class="bar" id="bar4"></div>
+    <div class="bar" id="bar5"></div>
+    <div class="bar" id="bar6"></div>
+    <div class="bar" id="bar7"></div>
+  </div>
+
+  <div class="feedback" id="feedback">
+    <h3>Transcription</h3>
+    <p id="transcriptionText">Waiting for input...</p>
+    <h3>Feedback</h3>
+    <p id="replyText">You’ll see feedback here.</p>
+  </div>
+
+  <div class="rating" id="ratingSection" style="display: none;">
+    <h3>Rate Your Answer</h3>
+    <div id="stars">
+      <span onclick="rateAnswer(1)">⭐</span>
+      <span onclick="rateAnswer(2)">⭐</span>
+      <span onclick="rateAnswer(3)">⭐</span>
+      <span onclick="rateAnswer(4)">⭐</span>
+      <span onclick="rateAnswer(5)">⭐</span>
+    </div>
+  </div>
+
+  <div style="margin-top: 30px;">
+    <button onclick="exportTranscript()">📄 Export Interview Transcript</button>
+  </div>
+
+  <audio id="responseAudio" autoplay hidden></audio>
+
+  <script>
+    let recorder, audioChunks = [], stream;
+    let isRecording = false, audioContext, analyser, source;
+    let silenceTimer = null;
+    const silenceThreshold = 0.01;
+
+    let transcriptHistory = [];
+    let currentTranscript = {};
+
+    const roleSelect = document.getElementById("role");
+    const customRoleInput = document.getElementById("customRole");
+
+    roleSelect.addEventListener("change", () => {
+      customRoleInput.style.display = (roleSelect.value === "Custom") ? "inline-block" : "none";
+    });
+
+    async function toggleRecording() {
+      if (isRecording) {
+        recorder.stop();
+        return;
+      }
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        source = audioContext.createMediaStreamSource(stream);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 128;
+        source.connect(analyser);
+
+        recorder = new MediaRecorder(stream);
+        audioChunks = [];
+        isRecording = true;
+
+        recorder.ondataavailable = e => audioChunks.push(e.data);
+
+        recorder.onstop = async () => {
+          stopBars();
+          isRecording = false;
+          stream.getTracks().forEach(track => track.stop());
+          if (audioContext && audioContext.state !== 'closed') await audioContext.close();
+
+          const blob = new Blob(audioChunks, { type: 'audio/wav' });
+          const formData = new FormData();
+          formData.append('audio', blob, 'input.wav');
+
+          let selectedRole = (roleSelect.value === "Custom") ? customRoleInput.value : roleSelect.value;
+          if (!selectedRole) selectedRole = "Software Engineer";
+          formData.append('role', selectedRole);
+
+          try {
+            const response = await fetch("http://localhost:5000/process_audio", {
+              method: "POST",
+              body: formData
+            });
+
+            const data = await response.json();
+            console.log("Server reply:", data);
+
+            document.getElementById("responseAudio").src = data.audio_url;
+
+            const feedbackDiv = document.getElementById("feedback");
+            feedbackDiv.style.display = 'block';
+            document.getElementById("transcriptionText").textContent = data.transcription || "(No speech detected)";
+            document.getElementById("replyText").textContent = data.reply_text || "(No feedback received)";
+            feedbackDiv.scrollIntoView({ behavior: 'smooth' });
+
+            document.getElementById("ratingSection").style.display = "block";
+            currentTranscript = {
+              question: data.reply_text,
+              answer: data.transcription,
+              rating: null
+            };
+
+          } catch (err) {
+            console.error("Server communication failed:", err);
+          }
+        };
+
+        recorder.start();
+        animateBars();
+        detectSilence(() => {
+          if (recorder?.state === 'recording') recorder.stop();
+        });
+
+      } catch (err) {
+        console.error("Microphone access error:", err);
+      }
+    }
+
+    function detectSilence(onSilence) {
+      const buffer = new Uint8Array(analyser.fftSize);
+
+      function check() {
+        analyser.getByteTimeDomainData(buffer);
+        const isSilent = !buffer.some(x => Math.abs(x - 128) > silenceThreshold * 128);
+
+        if (isSilent && !silenceTimer) {
+          silenceTimer = setTimeout(onSilence, 2000);
+        } else if (!isSilent && silenceTimer) {
+          clearTimeout(silenceTimer);
+          silenceTimer = null;
+        }
+
+        if (isRecording) requestAnimationFrame(check);
+      }
+
+      check();
+    }
+
+    function animateBars() {
+      const bars = [...document.querySelectorAll(".bar")];
+      const buffer = new Uint8Array(analyser.frequencyBinCount);
+
+      function draw() {
+        analyser.getByteFrequencyData(buffer);
+        bars.forEach((bar, i) => {
+          const value = buffer[i] || 0;
+          bar.style.height = `${(value / 256) * 100}px`;
+        });
+
+        if (isRecording) requestAnimationFrame(draw);
+      }
+
+      draw();
+    }
+
+    function stopBars() {
+      document.querySelectorAll('.bar').forEach(bar => {
+        bar.style.height = '10px';
+      });
+    }
+
+    function rateAnswer(stars) {
+      currentTranscript.rating = stars;
+      transcriptHistory.push(currentTranscript);
+      document.getElementById("ratingSection").style.display = "none";
+      alert(`✅ Rated ${stars} star(s)! Ready for the next question.`);
+    }
+
+    function exportTranscript() {
+      if (transcriptHistory.length === 0) {
+        alert("No transcript to export yet!");
+        return;
+      }
+
+      let content = "Mock Interview Transcript\n\n";
+
+      transcriptHistory.forEach((entry, i) => {
+        content += `Q${i + 1}: ${entry.question}\n`;
+        content += `Your Answer: ${entry.answer}\n`;
+        content += `Rating: ${entry.rating} star(s)\n\n`;
+      });
+
+      const blob = new Blob([content], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "interview_transcript.txt";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  </script>
+</body>
+</html>
