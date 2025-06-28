@@ -46,12 +46,15 @@ audio_chatbot/
 1. Clone the Repository
    
 git clone https://github.com/yourusername/audio_chatbot.git
+
 cd audio_chatbot
 
 2. Create Virtual Environment
 
 pip install pipenv
+
 pipenv shell
+
 pipenv install
 
 3. Install Required Packages
@@ -73,6 +76,7 @@ pip install praat-parselmouth
 **Update your flask_backend/app.py like this:**
 
 HUGGINGFACE_API_KEY = "your_token_here"
+
 HF_MODEL = "HuggingFaceH4/zephyr-7b-beta" #Replace with your model name
 
 5. Start Django Frontend
@@ -86,6 +90,7 @@ Visit: http://localhost:8000
 In a new terminal tab:
 
 cd flask_backend
+
 python app.py
 
 The Flask backend listens at http://localhost:5000/process_audio.
