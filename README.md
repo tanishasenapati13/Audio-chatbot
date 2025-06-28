@@ -1,4 +1,4 @@
-Audio Job Interview Chatbot
+**Audio Job Interview Chatbot**
 
 This project is a voice-enabled AI chatbot that simulates job interviews using:
 1) Hugging Face LLMs (e.g., Zephyr, Falcon)
@@ -69,7 +69,9 @@ pip install praat-parselmouth
 **Set Up Hugging Face**
    
 1)Create an account at https://huggingface.co
+
 2)Get a free API token from Settings → Access Tokens
+
 3)Pick a supported free model (e.g., HuggingFaceH4/zephyr-7b-beta)
 
 
