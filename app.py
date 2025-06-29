@@ -18,7 +18,7 @@ os.makedirs(RESPONSE_FOLDER, exist_ok=True)
 model = whisper.load_model("base")
 
 # Hugging Face API
-HUGGINGFACE_API_KEY = "hugging_face_api_key"  #API Key 
+HUGGINGFACE_API_KEY = "HUGGINGFACE_API_KEY"  #Replace with your api key
 HF_MODEL = "mistralai/Mixtral-8x7B-Instruct-v0.1"
 
 headers = {
