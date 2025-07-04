@@ -5,7 +5,7 @@ This project is a voice-enabled AI chatbot that simulates job interviews using:
 2) Whisper for voice transcription
 3) gTTS for voice response
 4) Flask for backend processing
-5) Django for frontend interface
+5) Django and HTML for frontend interface
    
 
 **Folder Structure**
@@ -60,10 +60,6 @@ pipenv install
 3. Install Required Packages
 
 pip install django flask flask-cors gtts requests openai-whisper
-
-4.Optional (future voice feedback):
-
-pip install praat-parselmouth
 
 
 **Set Up Hugging Face**
